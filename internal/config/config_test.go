@@ -9,7 +9,7 @@ package config
 import (
 	"testing"
 
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 )
 
 func TestOPCUAServerConfig_Validate(t *testing.T) {

@@ -1,44 +1,65 @@
-name: "OPCUA-Server"
-manufacturer: "Prosys"
-model: "S1"
-labels:
-  - "OPCUA"
-  - "test"
-description: "Simulation results of OPCUA Server"
+dbtimestamp:
+    created: 1690793848218
+    modified: 1690793848218
+id: e363b377-0cf8-4047-82c4-f03418f098c7
+name: OPCUA-Server
+manufacturer: Prosys
+description: Simulation results of OPCUA Server
+model: S1
+labels: [OPCUA, test]
 deviceResources:
-  -
-    name: "Counter"
-    description: "generated counter number"
-    properties:
-      valueType: "Int32"
-      readWrite: "R"
-      defaultValue: "0"
-      minimum: "0"
-      maximum: "30"
-    attributes:
-      { nodeId: "ns=3;i=1001" }
-  -
-    name: "Random"
-    description: "generated random number"
-    properties:
-      valueType: "Float64"
-      readWrite: "R"
-      defaultValue: "0.0"
-      minimum: "-2.0"
-      maximum: "2.0"
-    attributes:
-      { nodeId: "ns=3;i=1002" }
-
+    - description: generated counter number
+      name: Counter
+      isHidden: false
+      properties:
+        valueType: Int32
+        readWrite: R
+        units: ""
+        minimum: 0
+        maximum: 30
+        defaultValue: "0"
+        mask: null
+        shift: null
+        scale: null
+        offset: null
+        base: null
+        assertion: ""
+        mediaType: ""
+        optional: {}
+      attributes:
+        nodeId: ns=3;i=1001
+    - description: generated random number
+      name: Random
+      isHidden: false
+      properties:
+        valueType: Float64
+        readWrite: R
+        units: ""
+        minimum: -2
+        maximum: 2
+        defaultValue: "0.0"
+        mask: null
+        shift: null
+        scale: null
+        offset: null
+        base: null
+        assertion: ""
+        mediaType: ""
+        optional: {}
+      attributes:
+        nodeId: ns=3;i=1002
 deviceCommands:
-  -
-    name: "CounterNum"
-    isHidden: false
-    readWrite: "R"
-    resourceOperations:
-      - { deviceResource: "Counter", defaultValue: "0" }
-  -
-    name: "RandomNum"
-    isHidden: false
-    readWrite: "R"
-    resourceOperations:
-      - { deviceResource: "Random", defaultValue: "0.0" }
+    - name: CounterNum
+      isHidden: false
+      readWrite: R
+      resourceOperations:
+        - deviceResource: Counter
+          defaultValue: "0"
+          mappings: {}
+    - name: RandomNum
+      isHidden: false
+      readWrite: R
+      resourceOperations:
+        - deviceResource: Random
+          defaultValue: "0.0"
+          mappings: {}

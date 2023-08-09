@@ -1,0 +1,78 @@
+Service:
+  HealthCheckInterval: 10s
+  Host: localhost
+  Port: 59997
+  ServerBindAddr: ''
+  StartupMsg: device opcua started
+  MaxRequestSize: 0
+  RequestTimeout: 5s
+Registry:
+  Host: localhost
+  Port: 8500
+  CheckInterval: 10s
+  FailLimit: 3
+  FailWaitTime: 10
+  Type: consul
+Clients:
+  core-data:
+    Protocol: http
+    Host: localhost
+    Port: 59880
+  core-metadata:
+    Protocol: http
+    Host: localhost
+    Port: 59881
+MessageQueue:
+  Protocol: redis
+  Host: localhost
+  Port: 6379
+  Type: redis
+  AuthMode: usernamepassword
+  SecretName: redisdb
+  PublishTopicPrefix: edgex/events/device
+  Optional:
+    ClientId: device-opcua
+    Qos: '0'
+    KeepAlive: '10'
+    Retained: 'false'
+    AutoReconnect: 'true'
+    ConnectTimeout: '5'
+    SkipCertVerify: 'false'
+Device:
+  DataTransform: true
+  MaxCmdOps: 128
+  MaxCmdValueLen: 256
+  DevicesDir: ./res/devices
+  ProfilesDir: ./res/profiles
+  UpdateLastConnected: false
+  Labels: []
+  EnableAsyncReadings: true
+  AsyncBufferSize: 16
+  UseMessageBus: true
+SecretStore:
+  Type: vault
+  Host: localhost
+  Port: 8200
+  Path: device-opcua/
+  Protocol: http
+  RootCaCertPath: ''
+  ServerName: ''
+  TokenFile: /tmp/edgex/secrets/device-opcua/secrets-token.json
+  Authentication:
+    AuthType: X-Vault-Token
+Writable:
+  LogLevel: INFO
+  InsecureSecrets:
+    Sample:
+      path: redisdb
+      Secrets:
+        username: ''
+        password: ''
+OPCUAServer:
+  DeviceName: SimulationServer
+  Policy: None
+  Mode: None
+  CertFile: ''
+  KeyFile: ''
+  Writable:
+    Resources: 'Counter,Random'

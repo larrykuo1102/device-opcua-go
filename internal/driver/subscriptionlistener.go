@@ -15,9 +15,8 @@ import (
 	"time"
 
 	"github.com/edgexfoundry/device-opcua-go/internal/config"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v2/pkg/models"
-	"github.com/edgexfoundry/device-sdk-go/v2/pkg/service"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/models"
+	sdkModels "github.com/edgexfoundry/device-sdk-go/v3/pkg/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 	"github.com/gopcua/opcua"
 	"github.com/gopcua/opcua/ua"
 )
@@ -40,12 +39,12 @@ func (d *Driver) startSubscriptionListener() error {
 	ctx, cancel := context.WithCancel(ctxBg)
 	d.ctxCancel = cancel
 
-	ds := service.RunningService()
-	if ds == nil {
-		return fmt.Errorf("[Incoming listener] unable to get running device service")
-	}
+	// ds := service.RunningService()
+	// if ds == nil {
+	// 	return fmt.Errorf("[Incoming listener] unable to get running device service")
+	// }
 
-	device, err := ds.GetDeviceByName(deviceName)
+	device, err := d.sdk.GetDeviceByName(deviceName)
 	if err != nil {
 		return err
 	}
@@ -133,16 +132,17 @@ func (d *Driver) getClient(device models.Device) (*opcua.Client, error) {
 }
 
 func (d *Driver) configureMonitoredItems(sub *opcua.Subscription, resources, deviceName string) error {
-	ds := service.RunningService()
-	if ds == nil {
-		return fmt.Errorf("[Incoming listener] unable to get running device service")
-	}
+
+	// ds := service.RunningService()
+	// if ds == nil {
+	// 	return fmt.Errorf("[Incoming listener] unable to get running device service")
+	// }
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	for i, node := range strings.Split(resources, ",") {
-		deviceResource, ok := ds.DeviceResource(deviceName, node)
+		deviceResource, ok := d.sdk.DeviceResource(deviceName, node)
 		if !ok {
 			return fmt.Errorf("[Incoming listener] Unable to find device resource with name %s", node)
 		}
@@ -190,12 +190,7 @@ func (d *Driver) onIncomingDataReceived(data interface{}, nodeResourceName strin
 	deviceName := d.serviceConfig.OPCUAServer.DeviceName
 	reading := data
 
-	ds := service.RunningService()
-	if ds == nil {
-		return fmt.Errorf("[Incoming listener] unable to get running device service")
-	}
-
-	deviceResource, ok := ds.DeviceResource(deviceName, nodeResourceName)
+	deviceResource, ok := d.sdk.DeviceResource(deviceName, nodeResourceName)
 	if !ok {
 		d.Logger.Warnf("[Incoming listener] Incoming reading ignored. No DeviceObject found: name=%v deviceResource=%v value=%v", deviceName, nodeResourceName, data)
 		return nil

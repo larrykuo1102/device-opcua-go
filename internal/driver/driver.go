@@ -14,11 +14,11 @@ import (
 	"sync"
 
 	"github.com/edgexfoundry/device-opcua-go/internal/config"
-	sdkModel "github.com/edgexfoundry/device-sdk-go/v2/pkg/models"
-	"github.com/edgexfoundry/device-sdk-go/v2/pkg/service"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/clients/logger"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/errors"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/models"
+	"github.com/edgexfoundry/device-sdk-go/v3/pkg/interfaces"
+	sdkModel "github.com/edgexfoundry/device-sdk-go/v3/pkg/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/clients/logger"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/errors"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 )
 
 var once sync.Once
@@ -26,8 +26,10 @@ var driver *Driver
 
 // Driver struct
 type Driver struct {
+	sdk           interfaces.DeviceServiceSDK
 	Logger        logger.LoggingClient
 	AsyncCh       chan<- *sdkModel.AsyncValues
+	deviceCh      chan<- []sdkModel.DiscoveredDevice
 	serviceConfig *config.ServiceConfig
 	resourceMap   map[uint32]string
 	mu            sync.Mutex
@@ -35,7 +37,7 @@ type Driver struct {
 }
 
 // NewProtocolDriver returns a new protocol driver object
-func NewProtocolDriver() sdkModel.ProtocolDriver {
+func NewProtocolDriver() interfaces.ProtocolDriver {
 	once.Do(func() {
 		driver = new(Driver)
 	})
@@ -43,30 +45,26 @@ func NewProtocolDriver() sdkModel.ProtocolDriver {
 }
 
 // Initialize performs protocol-specific initialization for the device service
-func (d *Driver) Initialize(lc logger.LoggingClient, asyncCh chan<- *sdkModel.AsyncValues, deviceCh chan<- []sdkModel.DiscoveredDevice) error {
-	d.Logger = lc
-	d.AsyncCh = asyncCh
+func (d *Driver) Initialize(sdk interfaces.DeviceServiceSDK) error {
+	d.Logger = sdk.LoggingClient()
+	d.AsyncCh = sdk.AsyncValuesChannel()
+	d.deviceCh = sdk.DiscoveredDeviceChannel()
 	d.serviceConfig = &config.ServiceConfig{}
 	d.mu.Lock()
 	d.resourceMap = make(map[uint32]string)
 	d.mu.Unlock()
 
-	ds := service.RunningService()
-	if ds == nil {
-		return errors.NewCommonEdgeXWrapper(fmt.Errorf("unable to get running device service"))
+	if err := sdk.LoadCustomConfig(d.serviceConfig, "SimpleCustom"); err != nil {
+		return fmt.Errorf("unable to load 'SimpleCustom' custom configuration: %s", err.Error())
 	}
 
-	if err := ds.LoadCustomConfig(d.serviceConfig, CustomConfigSectionName); err != nil {
-		return errors.NewCommonEdgeX(errors.Kind(err), fmt.Sprintf("unable to load '%s' custom configuration", CustomConfigSectionName), err)
-	}
-
-	lc.Debugf("Custom config is: %v", d.serviceConfig)
+	d.Logger.Debugf("Custom config is: %v", d.serviceConfig)
 
 	if err := d.serviceConfig.OPCUAServer.Validate(); err != nil {
 		return errors.NewCommonEdgeXWrapper(err)
 	}
 
-	if err := ds.ListenForCustomConfigChanges(&d.serviceConfig.OPCUAServer.Writable, WritableInfoSectionName, d.updateWritableConfig); err != nil {
+	if err := d.sdk.ListenForCustomConfigChanges(&d.serviceConfig.OPCUAServer.Writable, WritableInfoSectionName, d.updateWritableConfig); err != nil {
 		return errors.NewCommonEdgeX(errors.Kind(err), fmt.Sprintf("unable to listen for changes for '%s' custom configuration", WritableInfoSectionName), err)
 	}
 
@@ -149,4 +147,47 @@ func getNodeID(attrs map[string]interface{}, id string) (string, error) {
 	}
 
 	return identifier.(string), nil
+}
+
+func (d *Driver) Start() error {
+	return nil
+}
+
+// func (d *Driver) Stop(force bool) error {
+// 	d.stopped = true
+// 	if !force {
+// 		d.waitAllCommandsToFinish()
+// 	}
+// 	for _, locked := range d.addressMap {
+// 		close(locked)
+// 	}
+// 	return nil
+// }
+
+// waitAllCommandsToFinish used to check and wait for the unfinished job
+// func (d *Driver) waitAllCommandsToFinish() {
+// loop:
+// 	for {
+// 		for _, count := range d.workingAddressCount {
+// 			if count != 0 {
+// 				// wait a moment and check again
+// 				time.Sleep(time.Second * SERVICE_STOP_WAIT_TIME)
+// 				continue loop
+// 			}
+// 		}
+// 		break loop
+// 	}
+// }
+
+func (d *Driver) Discover() error {
+	return fmt.Errorf("driver's Discover function isn't implemented")
+}
+
+func (d *Driver) ValidateDevice(device models.Device) error {
+	// err := config.Validate()
+	// d.serviceConfig.OPCUAServer.Validate()
+	// if err != nil {
+	// 	return fmt.Errorf("invalid protocol properties, %v", err)
+	// }
+	return nil
 }
