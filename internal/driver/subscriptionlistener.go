@@ -60,35 +60,35 @@ func (d *Driver) startSubscriptionListener() error {
 	}
 	defer client.Close()
 
+	notificationChannel := make(chan *opcua.PublishNotificationData)
+
 	sub, err := client.Subscribe(
 		&opcua.SubscriptionParameters{
 			Interval: time.Duration(500) * time.Millisecond,
-		}, make(chan *opcua.PublishNotificationData))
+		},
+		notificationChannel,
+	)
 	if err != nil {
 		return err
 	}
-	defer sub.Cancel()
+	defer sub.Cancel(ctx)
 
 	if err := d.configureMonitoredItems(sub, resources, deviceName); err != nil {
 		return err
 	}
 
-	go sub.Run(ctx) // start Publish loop
+	// ... 其他程式碼 ...
 
-	// read from subscription's notification channel until ctx is cancelled
 	for {
 		select {
-		// context return
 		case <-ctx.Done():
 			return nil
-			// receive Publish Notification Data
-		case res := <-sub.Notifs:
+		case res := <-notificationChannel:
 			if res.Error != nil {
 				d.Logger.Debug(res.Error.Error())
 				continue
 			}
 			switch x := res.Value.(type) {
-			// result type: DateChange StatusChange
 			case *ua.DataChangeNotification:
 				d.handleDataChange(x)
 			}
@@ -108,8 +108,8 @@ func (d *Driver) getClient(device models.Device) (*opcua.Client, error) {
 	if xerr != nil {
 		return nil, xerr
 	}
-
-	endpoints, err := opcua.GetEndpoints(endpoint)
+	ctx := context.Background()
+	endpoints, err := opcua.GetEndpoints(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}

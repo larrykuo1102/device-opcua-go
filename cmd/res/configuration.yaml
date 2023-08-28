@@ -6,23 +6,23 @@ Service:
   StartupMsg: device opcua started
   MaxRequestSize: 0
   RequestTimeout: 5s
-Registry:
-  Host: localhost
-  Port: 8500
-  CheckInterval: 10s
-  FailLimit: 3
-  FailWaitTime: 10
-  Type: consul
-Clients:
-  core-data:
-    Protocol: http
-    Host: localhost
-    Port: 59880
-  core-metadata:
-    Protocol: http
-    Host: localhost
-    Port: 59881
-MessageQueue:
+# Registry:
+#   Host: localhost
+#   Port: 8500
+#   CheckInterval: 10s
+#   FailLimit: 3
+#   FailWaitTime: 10
+#   Type: consul
+# Clients:
+#   core-data:
+#     Protocol: http
+#     Host: localhost
+#     Port: 59880
+#   core-metadata:
+#     Protocol: http
+#     Host: localhost
+#     Port: 59881
+MessageBus:
   Protocol: redis
   Host: localhost
   Port: 6379
@@ -49,17 +49,17 @@ Device:
   EnableAsyncReadings: true
   AsyncBufferSize: 16
   UseMessageBus: true
-SecretStore:
-  Type: vault
-  Host: localhost
-  Port: 8200
-  Path: device-opcua/
-  Protocol: http
-  RootCaCertPath: ''
-  ServerName: ''
-  TokenFile: /tmp/edgex/secrets/device-opcua/secrets-token.json
-  Authentication:
-    AuthType: X-Vault-Token
+# SecretStore:
+#   Type: vault
+#   Host: localhost
+#   Port: 8200
+#   Path: device-opcua/
+#   Protocol: http
+#   RootCaCertPath: ''
+#   ServerName: ''
+#   TokenFile: /tmp/edgex/secrets/device-opcua/secrets-token.json
+#   Authentication:
+#     AuthType: X-Vault-Token
 Writable:
   LogLevel: INFO
   InsecureSecrets:
