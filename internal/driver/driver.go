@@ -36,6 +36,21 @@ type Driver struct {
 	ctxCancel     context.CancelFunc
 }
 
+// Discover implements interfaces.ProtocolDriver.
+func (*Driver) Discover() error {
+	return fmt.Errorf("driver's Discover function isn't implemented")
+}
+
+// Start implements interfaces.ProtocolDriver.
+func (*Driver) Start() error {
+	return nil
+}
+
+// ValidateDevice implements interfaces.ProtocolDriver.
+func (*Driver) ValidateDevice(device models.Device) error {
+	return nil
+}
+
 // NewProtocolDriver returns a new protocol driver object
 func NewProtocolDriver() interfaces.ProtocolDriver {
 	once.Do(func() {
@@ -46,16 +61,21 @@ func NewProtocolDriver() interfaces.ProtocolDriver {
 
 // Initialize performs protocol-specific initialization for the device service
 func (d *Driver) Initialize(sdk interfaces.DeviceServiceSDK) error {
+	d.sdk = sdk
 	d.Logger = sdk.LoggingClient()
 	d.AsyncCh = sdk.AsyncValuesChannel()
-	d.deviceCh = sdk.DiscoveredDeviceChannel()
 	d.serviceConfig = &config.ServiceConfig{}
 	d.mu.Lock()
 	d.resourceMap = make(map[uint32]string)
 	d.mu.Unlock()
 
-	if err := sdk.LoadCustomConfig(d.serviceConfig, "SimpleCustom"); err != nil {
-		return fmt.Errorf("unable to load 'SimpleCustom' custom configuration: %s", err.Error())
+	// ds := service.RunningService()
+	// if ds == nil {
+	// 	return errors.NewCommonEdgeXWrapper(fmt.Errorf("unable to get running device service"))
+	// }
+
+	if err := sdk.LoadCustomConfig(d.serviceConfig, CustomConfigSectionName); err != nil {
+		return errors.NewCommonEdgeX(errors.Kind(err), fmt.Sprintf("unable to load '%s' custom configuration", CustomConfigSectionName), err)
 	}
 
 	d.Logger.Debugf("Custom config is: %v", d.serviceConfig)
@@ -64,7 +84,7 @@ func (d *Driver) Initialize(sdk interfaces.DeviceServiceSDK) error {
 		return errors.NewCommonEdgeXWrapper(err)
 	}
 
-	if err := d.sdk.ListenForCustomConfigChanges(&d.serviceConfig.OPCUAServer.Writable, WritableInfoSectionName, d.updateWritableConfig); err != nil {
+	if err := sdk.ListenForCustomConfigChanges(&d.serviceConfig.OPCUAServer.Writable, WritableInfoSectionName, d.updateWritableConfig); err != nil {
 		return errors.NewCommonEdgeX(errors.Kind(err), fmt.Sprintf("unable to listen for changes for '%s' custom configuration", WritableInfoSectionName), err)
 	}
 
@@ -147,47 +167,4 @@ func getNodeID(attrs map[string]interface{}, id string) (string, error) {
 	}
 
 	return identifier.(string), nil
-}
-
-func (d *Driver) Start() error {
-	return nil
-}
-
-// func (d *Driver) Stop(force bool) error {
-// 	d.stopped = true
-// 	if !force {
-// 		d.waitAllCommandsToFinish()
-// 	}
-// 	for _, locked := range d.addressMap {
-// 		close(locked)
-// 	}
-// 	return nil
-// }
-
-// waitAllCommandsToFinish used to check and wait for the unfinished job
-// func (d *Driver) waitAllCommandsToFinish() {
-// loop:
-// 	for {
-// 		for _, count := range d.workingAddressCount {
-// 			if count != 0 {
-// 				// wait a moment and check again
-// 				time.Sleep(time.Second * SERVICE_STOP_WAIT_TIME)
-// 				continue loop
-// 			}
-// 		}
-// 		break loop
-// 	}
-// }
-
-func (d *Driver) Discover() error {
-	return fmt.Errorf("driver's Discover function isn't implemented")
-}
-
-func (d *Driver) ValidateDevice(device models.Device) error {
-	// err := config.Validate()
-	// d.serviceConfig.OPCUAServer.Validate()
-	// if err != nil {
-	// 	return fmt.Errorf("invalid protocol properties, %v", err)
-	// }
-	return nil
 }

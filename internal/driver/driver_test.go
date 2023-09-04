@@ -198,11 +198,11 @@ func Test_getNodeID(t *testing.T) {
 }
 
 func TestDriver_Initialize(t *testing.T) {
-	// t.Run("initialize", func(t *testing.T) {
-	// 	d := NewProtocolDriver()
-	// 	err := d.Initialize(&logger.MockLogger{}, driver.sdk.AsyncValuesChannel(), make(chan<- []sdkModel.DiscoveredDevice))
-	// 	if err == nil {
-	// 		t.Errorf("expected error to be returned in test environment")
-	// 	}
-	// })
+	t.Run("initialize", func(t *testing.T) {
+		d := NewProtocolDriver().(*Driver)
+		err := d.Initialize(d.sdk)
+		if err == nil {
+			t.Errorf("expected error to be returned in test environment")
+		}
+	})
 }

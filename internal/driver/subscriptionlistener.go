@@ -77,10 +77,10 @@ func (d *Driver) startSubscriptionListener() error {
 		return err
 	}
 
-	// ... 其他程式碼 ...
-
+	// read from subscription's notification channel until ctx is cancelled
 	for {
 		select {
+		// context return
 		case <-ctx.Done():
 			return nil
 		case res := <-notificationChannel:
@@ -94,6 +94,38 @@ func (d *Driver) startSubscriptionListener() error {
 			}
 		}
 	}
+
+	// for {
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		return
+	// 	case res := <-notifyCh:
+	// 		if res.Error != nil {
+	// 			log.Print(res.Error)
+	// 			continue
+	// 		}
+
+	// 		switch x := res.Value.(type) {
+	// 		case *ua.DataChangeNotification:
+	// 			for _, item := range x.MonitoredItems {
+	// 				data := item.Value.Value.Value()
+	// 				log.Printf("MonitoredItem with client handle %v = %v", item.ClientHandle, data)
+	// 			}
+
+	// 		case *ua.EventNotificationList:
+	// 			for _, item := range x.Events {
+	// 				log.Printf("Event for client handle: %v\n", item.ClientHandle)
+	// 				for i, field := range item.EventFields {
+	// 					log.Printf("%v: %v of Type: %T", eventFieldNames[i], field.Value(), field.Value())
+	// 				}
+	// 				log.Println()
+	// 			}
+
+	// 		default:
+	// 			log.Printf("what's this publish result? %T", res.Value)
+	// 		}
+	// 	}
+	// }
 }
 
 func (d *Driver) getClient(device models.Device) (*opcua.Client, error) {
@@ -132,7 +164,6 @@ func (d *Driver) getClient(device models.Device) (*opcua.Client, error) {
 }
 
 func (d *Driver) configureMonitoredItems(sub *opcua.Subscription, resources, deviceName string) error {
-
 	// ds := service.RunningService()
 	// if ds == nil {
 	// 	return fmt.Errorf("[Incoming listener] unable to get running device service")
