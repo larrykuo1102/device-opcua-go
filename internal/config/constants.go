@@ -11,4 +11,6 @@ const (
 	Protocol = "opcua"
 	// Endpoint is a constant string
 	Endpoint = "Endpoint"
+	Username = "Username"
+	Password = "Password"
 )

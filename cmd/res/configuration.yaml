@@ -70,9 +70,9 @@ Writable:
         password: ''
 OPCUAServer:
   DeviceName: SimulationServer
-  Policy: None
-  Mode: None
-  CertFile: ''
-  KeyFile: ''
+  Policy: Sign
+  Mode: Basic128Rsa15
+  CertFile: '/res'
+  KeyFile: '/res'
   Writable:
     Resources: 'Counter,Random'

@@ -136,6 +136,11 @@ func (d *Driver) getClient(device models.Device) (*opcua.Client, error) {
 		keyFile  = d.serviceConfig.OPCUAServer.KeyFile
 	)
 
+	username, password, xerr := config.FetchAuthUsername(device.Protocols)
+	if xerr != nil || (username == "" || password == "") {
+		return nil, xerr
+	}
+	fmt.Printf("Username : %s, Password : %s\n", username, password)
 	endpoint, xerr := config.FetchEndpoint(device.Protocols)
 	if xerr != nil {
 		return nil, xerr
@@ -156,8 +161,9 @@ func (d *Driver) getClient(device models.Device) (*opcua.Client, error) {
 		opcua.SecurityModeString(mode),
 		opcua.CertificateFile(certFile),
 		opcua.PrivateKeyFile(keyFile),
-		opcua.AuthAnonymous(),
-		opcua.SecurityFromEndpoint(ep, ua.UserTokenTypeAnonymous),
+		// opcua.AuthAnonymous(),
+		opcua.AuthUsername(username, password),
+		opcua.SecurityFromEndpoint(ep, ua.UserTokenTypeUserName),
 	}
 
 	return opcua.NewClient(ep.EndpointURL, opts...), nil

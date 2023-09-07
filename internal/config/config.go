@@ -103,3 +103,29 @@ func FetchEndpoint(protocols map[string]models.ProtocolProperties) (string, erro
 
 	return endpointStr, nil
 }
+
+func FetchAuthUsername(protocols map[string]models.ProtocolProperties) (string, string, errors.EdgeX) {
+	properties, ok := protocols[Protocol]
+	if !ok {
+		return "", "", errors.NewCommonEdgeX(errors.KindContractInvalid, fmt.Sprintf("'%s' protocol properties is not defined", Protocol), nil)
+	}
+	username, ok := properties[Username]
+	if !ok {
+		return "", "", errors.NewCommonEdgeX(errors.KindContractInvalid, fmt.Sprintf("'%s' not found in the '%s' protocol properties", Endpoint, Protocol), nil)
+	}
+	password, ok := properties[Password]
+	if !ok {
+		return "", "", errors.NewCommonEdgeX(errors.KindContractInvalid, fmt.Sprintf("'%s' not found in the '%s' protocol properties", Endpoint, Protocol), nil)
+	}
+
+	usernameStr, ok := username.(string)
+	if !ok {
+		return "", "", errors.NewCommonEdgeX(errors.KindServerError, "username 值不是字符串类型", nil)
+	}
+	passwordStr, ok := password.(string)
+	if !ok {
+		return "", "", errors.NewCommonEdgeX(errors.KindServerError, "password 值不是字符串类型", nil)
+	}
+
+	return usernameStr, passwordStr, nil
+}
