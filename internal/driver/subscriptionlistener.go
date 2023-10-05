@@ -18,6 +18,7 @@ import (
 	sdkModels "github.com/edgexfoundry/device-sdk-go/v3/pkg/models"
 	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 	"github.com/gopcua/opcua"
+	"github.com/gopcua/opcua/id"
 	"github.com/gopcua/opcua/ua"
 )
 
@@ -32,6 +33,8 @@ func (d *Driver) startSubscriptionListener() error {
 	if len(resources) == 0 {
 		d.Logger.Info("[Incoming listener] No resources defined to generate subscriptions.")
 		return nil
+	} else {
+		d.Logger.Infof("Resources: %v", resources)
 	}
 
 	// Create a cancelable context for Writable configuration
@@ -43,17 +46,17 @@ func (d *Driver) startSubscriptionListener() error {
 	// if ds == nil {
 	// 	return fmt.Errorf("[Incoming listener] unable to get running device service")
 	// }
-
+	d.Logger.Infof("GetDeviceByName: %v", resources)
 	device, err := d.sdk.GetDeviceByName(deviceName)
 	if err != nil {
 		return err
 	}
-
+	d.Logger.Infof("getClient: %v", resources)
 	client, err := d.getClient(device)
 	if err != nil {
 		return err
 	}
-
+	d.Logger.Infof("client.Connect: %v", resources)
 	if err := client.Connect(ctx); err != nil {
 		d.Logger.Warnf("[Incoming listener] Failed to connect OPCUA client, %s", err)
 		return err
@@ -62,25 +65,26 @@ func (d *Driver) startSubscriptionListener() error {
 
 	notificationChannel := make(chan *opcua.PublishNotificationData)
 
-	sub, err := client.Subscribe(
-		&opcua.SubscriptionParameters{
-			Interval: time.Duration(500) * time.Millisecond,
-		},
-		notificationChannel,
-	)
+	d.Logger.Infof("SubscribeWithContext: %v", resources)
+	sub, err := client.SubscribeWithContext(ctx, &opcua.SubscriptionParameters{
+		Interval: time.Duration(500) * time.Millisecond,
+	}, notificationChannel)
 	if err != nil {
 		return err
 	}
 	defer sub.Cancel(ctx)
+	d.Logger.Infof("Created subscription with id %v", sub.SubscriptionID)
 
 	if err := d.configureMonitoredItems(sub, resources, deviceName); err != nil {
 		return err
 	}
 
 	// read from subscription's notification channel until ctx is cancelled
+	// stackTrace := make([]byte, 1024)
+	// length := runtime.Stack(stackTrace, false)
+	// fmt.Printf("Stack Trace of Current Goroutine:\n%s\n", stackTrace[:length])
 	for {
 		select {
-		// context return
 		case <-ctx.Done():
 			return nil
 		case res := <-notificationChannel:
@@ -91,41 +95,11 @@ func (d *Driver) startSubscriptionListener() error {
 			switch x := res.Value.(type) {
 			case *ua.DataChangeNotification:
 				d.handleDataChange(x)
+			default:
+				d.Logger.Infof("what's this publish result? %T", res.Value)
 			}
 		}
 	}
-
-	// for {
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		return
-	// 	case res := <-notifyCh:
-	// 		if res.Error != nil {
-	// 			log.Print(res.Error)
-	// 			continue
-	// 		}
-
-	// 		switch x := res.Value.(type) {
-	// 		case *ua.DataChangeNotification:
-	// 			for _, item := range x.MonitoredItems {
-	// 				data := item.Value.Value.Value()
-	// 				log.Printf("MonitoredItem with client handle %v = %v", item.ClientHandle, data)
-	// 			}
-
-	// 		case *ua.EventNotificationList:
-	// 			for _, item := range x.Events {
-	// 				log.Printf("Event for client handle: %v\n", item.ClientHandle)
-	// 				for i, field := range item.EventFields {
-	// 					log.Printf("%v: %v of Type: %T", eventFieldNames[i], field.Value(), field.Value())
-	// 				}
-	// 				log.Println()
-	// 			}
-
-	// 		default:
-	// 			log.Printf("what's this publish result? %T", res.Value)
-	// 		}
-	// 	}
-	// }
 }
 
 func (d *Driver) getClient(device models.Device) (*opcua.Client, error) {
@@ -140,7 +114,7 @@ func (d *Driver) getClient(device models.Device) (*opcua.Client, error) {
 	if xerr != nil || (username == "" || password == "") {
 		return nil, xerr
 	}
-	fmt.Printf("Username : %s, Password : %s\n", username, password)
+	// fmt.Printf("Username : %s, Password : %s\n", username, password)
 	endpoint, xerr := config.FetchEndpoint(device.Protocols)
 	if xerr != nil {
 		return nil, xerr
@@ -164,6 +138,8 @@ func (d *Driver) getClient(device models.Device) (*opcua.Client, error) {
 		// opcua.AuthAnonymous(),
 		opcua.AuthUsername(username, password),
 		opcua.SecurityFromEndpoint(ep, ua.UserTokenTypeUserName),
+		opcua.AutoReconnect(true),
+		opcua.ReconnectInterval(time.Second * 10),
 	}
 
 	return opcua.NewClient(ep.EndpointURL, opts...), nil
@@ -218,6 +194,7 @@ func (d *Driver) handleDataChange(dcn *ua.DataChangeNotification) {
 		data := item.Value.Value.Value()
 		nodeName := d.resourceMap[item.ClientHandle]
 		if err := d.onIncomingDataReceived(data, nodeName); err != nil {
+			d.Logger.Infof("MonitoredItem with client handle %v = %v", nodeName, data)
 			d.Logger.Errorf("%v", err)
 		}
 	}
@@ -254,4 +231,84 @@ func (d *Driver) onIncomingDataReceived(data interface{}, nodeResourceName strin
 	d.AsyncCh <- asyncValues
 
 	return nil
+}
+
+func valueRequest(nodeID *ua.NodeID) *ua.MonitoredItemCreateRequest {
+	handle := uint32(42)
+	return opcua.NewMonitoredItemCreateRequestWithDefaults(nodeID, ua.AttributeIDValue, handle)
+}
+
+func eventRequest(nodeID *ua.NodeID) (*ua.MonitoredItemCreateRequest, []string) {
+	fieldNames := []string{"EventId", "EventType", "Severity", "Time", "Message"}
+	selects := make([]*ua.SimpleAttributeOperand, len(fieldNames))
+
+	for i, name := range fieldNames {
+		selects[i] = &ua.SimpleAttributeOperand{
+			TypeDefinitionID: ua.NewNumericNodeID(0, id.BaseEventType),
+			BrowsePath:       []*ua.QualifiedName{{NamespaceIndex: 0, Name: name}},
+			AttributeID:      ua.AttributeIDValue,
+		}
+	}
+
+	wheres := &ua.ContentFilter{
+		Elements: []*ua.ContentFilterElement{
+			{
+				FilterOperator: ua.FilterOperatorGreaterThanOrEqual,
+				FilterOperands: []*ua.ExtensionObject{
+					{
+						EncodingMask: 1,
+						TypeID: &ua.ExpandedNodeID{
+							NodeID: ua.NewNumericNodeID(0, id.SimpleAttributeOperand_Encoding_DefaultBinary),
+						},
+						Value: ua.SimpleAttributeOperand{
+							TypeDefinitionID: ua.NewNumericNodeID(0, id.BaseEventType),
+							BrowsePath:       []*ua.QualifiedName{{NamespaceIndex: 0, Name: "Severity"}},
+							AttributeID:      ua.AttributeIDValue,
+						},
+					},
+					{
+						EncodingMask: 1,
+						TypeID: &ua.ExpandedNodeID{
+							NodeID: ua.NewNumericNodeID(0, id.LiteralOperand_Encoding_DefaultBinary),
+						},
+						Value: ua.LiteralOperand{
+							Value: ua.MustVariant(uint16(0)),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	filter := ua.EventFilter{
+		SelectClauses: selects,
+		WhereClause:   wheres,
+	}
+
+	filterExtObj := ua.ExtensionObject{
+		EncodingMask: ua.ExtensionObjectBinary,
+		TypeID: &ua.ExpandedNodeID{
+			NodeID: ua.NewNumericNodeID(0, id.EventFilter_Encoding_DefaultBinary),
+		},
+		Value: filter,
+	}
+
+	handle := uint32(42)
+	req := &ua.MonitoredItemCreateRequest{
+		ItemToMonitor: &ua.ReadValueID{
+			NodeID:       nodeID,
+			AttributeID:  ua.AttributeIDEventNotifier,
+			DataEncoding: &ua.QualifiedName{},
+		},
+		MonitoringMode: ua.MonitoringModeReporting,
+		RequestedParameters: &ua.MonitoringParameters{
+			ClientHandle:     handle,
+			DiscardOldest:    true,
+			Filter:           &filterExtObj,
+			QueueSize:        10,
+			SamplingInterval: 1.0,
+		},
+	}
+
+	return req, fieldNames
 }

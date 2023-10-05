@@ -217,40 +217,40 @@ services:
       source: db-data
       target: /data
       volume: {}
-  device-modbus:
-    container_name: edgex-device-modbus
-    depends_on:
-      consul:
-        condition: service_started
-      core-data:
-        condition: service_started
-      core-metadata:
-        condition: service_started
-    environment:
-      EDGEX_SECURITY_SECRET_STORE: "false"
-      SERVICE_HOST: edgex-device-modbus
-    hostname: edgex-device-modbus
-    image: nexus3.edgexfoundry.org:10004/device-modbus:latest
-    networks:
-      edgex-network: null
-    ports:
-    - mode: ingress
-      host_ip: 127.0.0.1
-      target: 59901
-      published: "59901"
-      protocol: tcp
-    read_only: true
-    restart: always
-    security_opt:
-    - no-new-privileges:true
-    user: 2002:2001
-    volumes:
-    - type: bind
-      source: /etc/localtime
-      target: /etc/localtime
-      read_only: true
-      bind:
-        create_host_path: true
+  # device-modbus:
+  #   container_name: edgex-device-modbus
+  #   depends_on:
+  #     consul:
+  #       condition: service_started
+  #     core-data:
+  #       condition: service_started
+  #     core-metadata:
+  #       condition: service_started
+  #   environment:
+  #     EDGEX_SECURITY_SECRET_STORE: "false"
+  #     SERVICE_HOST: edgex-device-modbus
+  #   hostname: edgex-device-modbus
+  #   image: nexus3.edgexfoundry.org:10004/device-modbus:latest
+  #   networks:
+  #     edgex-network: null
+  #   ports:
+  #   - mode: ingress
+  #     host_ip: 127.0.0.1
+  #     target: 59901
+  #     published: "59901"
+  #     protocol: tcp
+  #   read_only: true
+  #   restart: always
+  #   security_opt:
+  #   - no-new-privileges:true
+  #   user: 2002:2001
+  #   volumes:
+  #   - type: bind
+  #     source: /etc/localtime
+  #     target: /etc/localtime
+  #     read_only: true
+  #     bind:
+  #       create_host_path: true
   rules-engine:
     container_name: edgex-kuiper
     depends_on:
@@ -440,6 +440,33 @@ services:
       read_only: true
       bind:
         create_host_path: true
+  azure-iot:
+    image: docker.io/edgexfoundry/azure-iot:0.0.0-dev
+    ports:
+      - 127.0.0.1:59700:59700/tcp
+    container_name: edgex-azure-iot
+    hostname: edgex-azure-iot
+    environment:
+      # EDGEX_PROFILE: azure-iot
+      SERVICE_HOST: edgex-azure-iot
+      CLIENTS_CORE_DATA_HOST: edgex-core-data
+      CLIENTS_CORE_COMMAND_HOST: edgex-core-command
+      CLIENTS_SUPPORT-NOTIFICATIONS_HOST: edgex-support-notifications
+      EDGEX_SECURITY_SECRET_STORE: "false"
+    depends_on:
+      - consul
+      - core-data
+    read_only: true
+    restart: always
+    networks:
+      - edgex-network
+    security_opt:
+      - no-new-privileges:true
+    user: 2002:2001
+    volumes:
+      # use host timezone
+      - /etc/localtime:/etc/localtime:ro
+
 networks:
   edgex-network:
     name: edgex_edgex-network

@@ -22,7 +22,7 @@ import (
 func (d *Driver) HandleReadCommands(deviceName string, protocols map[string]models.ProtocolProperties,
 	reqs []sdkModel.CommandRequest) ([]*sdkModel.CommandValue, error) {
 
-	d.Logger.Debugf("Driver.HandleReadCommands: protocols: %v resource: %v attributes: %v", protocols, reqs[0].DeviceResourceName, reqs[0].Attributes)
+	d.Logger.Infof("Driver.HandleReadCommands: protocols: %v resource: %v attributes: %v\n %v", protocols, reqs[0].DeviceResourceName, reqs[0].Attributes, reqs)
 
 	// create device client and open connection
 	device, err := d.sdk.GetDeviceByName(deviceName)

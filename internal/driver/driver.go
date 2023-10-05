@@ -42,7 +42,8 @@ func (*Driver) Discover() error {
 }
 
 // Start implements interfaces.ProtocolDriver.
-func (*Driver) Start() error {
+func (d *Driver) Start() error {
+	go d.startSubscriber()
 	return nil
 }
 
@@ -110,6 +111,7 @@ func (d *Driver) updateWritableConfig(rawWritableConfig interface{}) {
 // Start or restart the subscription listener
 func (d *Driver) startSubscriber() {
 	err := d.startSubscriptionListener()
+	d.Logger.Infof("Driver.Initialize: StartSubscriber")
 	if err != nil {
 		d.Logger.Errorf("Driver.Initialize: Start incoming data Listener failed: %v", err)
 	}
